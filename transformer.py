@@ -133,42 +133,42 @@ class Encoder(nn.Module):
 	def __init__(self, enc_voc_size, max_len, embedSize, heads, hidden, n_layers, drop_prob, device):
 		super(Encoder, self).__init__()
 		self.emb = TransformerEmbedding(d_model=embedSize, max_len=max_len, vocab_size=enc_voc_size, drop_prob=drop_prob, device=device)
-		self.layers = nn.ModuleList([EncoderBlock(embedSize=embedSize,hidden=hidden,heads=heads) for _ in range(n_layers)])
+		self.attentionLayer = nn.ModuleList([EncoderBlock(embedSize = embedSize, hidden = hidden, heads = heads, mask = mask) for _ in range(n_layers)])
 
-	def forward(self, x, src_mask):
+	def forward(self, x):
 		x = self.emb(x)
 
-		for layer in self.layers:
-			x = layer(x, src_mask)
+		for layer in self.attentionLayer:
+			x = layer(x)
 
 		return x
 
 class Decoder(nn.Module):
-    def __init__(self, enc_voc_size, max_len, embedSize, heads, hidden, mask, n_layers, drop_prob, device):
-        super(Decoder, self).__init__()
-        self.emb = TransformerEmbedding(d_model = embedSize, drop_prob = drop_prob, max_len = max_len, vocab_size = dec_voc_size, device = device)
-        self.layers = nn.ModuleList([DecoderBlock(embedSize = embedSize, hidden = hidden, heads = heads) for _ in range(n_layers)])
-        self.linear = nn.Linear(d_model, dec_voc_size)
+	def __init__(self, enc_voc_size, max_len, embedSize, heads, hidden, mask, n_layers, drop_prob, device):
+		super(Decoder, self).__init__()
+		self.emb = TransformerEmbedding(d_model = embedSize, drop_prob = drop_prob, max_len = max_len, vocab_size = dec_voc_size, device = device)
+		self.maskedAttentionLayers = nn.ModuleList([DecoderBlock(embedSize = embedSize, hidden = hidden, heads = heads, mask = mask) for _ in range(n_layers)])
+		self.linear = nn.Linear(d_model, dec_voc_size)
 
-    def forward(self, trg, src, trg_mask, src_mask):
-        trg = self.emb(trg)
+	def forward(self, trg, src):
+		trg = self.emb(trg)
 
-        for layer in self.layers:
-            trg = layer(trg, src, trg_mask, src_mask)
+		for layer in self.maskedAttentionLayers:
+			trg = layer(trg, src)
 
-        output = self.linear(trg)
+		output = self.linear(trg)
 
-        return output
+		return output
 
 class Trasformer(nn.Module):
 	def __init__(self, enc_voc_size, max_len, embedSize, heads, hidden, mask, n_layers, drop_prob, device):
-        super(Trasformer, self).__init__()
+		super(Trasformer, self).__init__()
 
-        self.decoder = Decoder(enc_voc_size, max_len, embedSize, heads, hidden, mask, n_layers, drop_prob, device)
-        self.enncoder = Encoder(enc_voc_size, max_len, embedSize, heads, hidden, n_layers, drop_prob, device)
+		self.decoder = Decoder(enc_voc_size, max_len, embedSize, heads, hidden, mask, n_layers, drop_prob, device)
+		self.enncoder = Encoder(enc_voc_size, max_len, embedSize, heads, hidden, n_layers, drop_prob, device)
 
-     def forwward(self, x):
-     	x = self.encoder(x)
-     	x = self.decoder(x)
+	def forwward(self, x):
+		x = self.encoder(x)
+		x = self.decoder(x)
 
-     	return x
+		return x
